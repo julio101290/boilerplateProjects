@@ -1,16 +1,16 @@
 <?php
 
-namespace App\Controllers;
+namespace julio101290\boilerplateprojects\Controllers;
 
 use App\Controllers\BaseController;
-use \App\Models\{
+use julio101290\boilerplateprojects\Models\{
     ConceptosModel
 };
-use App\Models\LogModel;
+use julio101290\boilerplatelog\Models\LogModel;
 use CodeIgniter\API\ResponseTrait;
-use App\Models\EmpresasModel;
-use App\Models\Tipos_proyectoModel;
-use App\Models\ProyectosModel;
+use julio101290\boilerplatecompanies\Models\EmpresasModel;
+use julio101290\boilerplateprojects\Models\Tipos_proyectoModel;
+use julio101290\boilerplateprojects\Models\ProyectosModel;
 
 class ConceptosController extends BaseController {
 
@@ -52,13 +52,44 @@ class ConceptosController extends BaseController {
 
 
         if ($this->request->isAJAX()) {
-            $datos = $this->conceptos->mdlGetConceptos($empresasID);
+            $draw = (int) $this->request->getGet('draw');
+            $start = (int) $this->request->getGet('start');
+            $length = (int) $this->request->getGet('length');
+            $search = $this->request->getGet('search')['value'] ?? '';
+            $orderIndex = (int) $this->request->getGet('order')[0]['column'] ?? 0;
+            $orderDir = $this->request->getGet('order')[0]['dir'] ?? 'asc';
 
-            return \Hermawan\DataTables\DataTable::of($datos)->toJson(true);
+            // Columnas disponibles para ordenar
+            $columns = [
+                'a.id',
+                'a.descripcion',
+                'a.tipoProyecto',
+                'a.orden',
+                'a.created_at'
+            ];
+            $orderBy = $columns[$orderIndex] ?? 'a.id';
+
+
+            $params = [
+                'start' => $start,
+                'length' => $length,
+                'search' => $search,
+                'orderBy' => $orderBy,
+                'orderDir' => $orderDir,
+            ];
+
+            $resultado = $this->conceptos->mdlGetConceptos($empresasID, $params);
+
+            return $this->response->setJSON([
+                        'draw' => $draw,
+                        'recordsTotal' => $resultado['total'],
+                        'recordsFiltered' => $resultado['filtered'],
+                        'data' => $resultado['data'],
+            ]);
         }
         $titulos["title"] = lang('conceptos.title');
         $titulos["subtitle"] = lang('conceptos.subtitle');
-        return view('conceptos', $titulos);
+        return view('julio101290\boilerplateprojects\Views\conceptos', $titulos);
     }
 
     /**
