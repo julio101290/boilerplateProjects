@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Controllers;
+namespace julio101290\boilerplateprojects\Controllers;
 
 use App\Controllers\BaseController;
-use \App\Models\{
+use julio101290\boilerplateprojects\Models\{
     Tipos_proyectoModel
 };
-use App\Models\LogModel;
+use julio101290\boilerplatelog\Models\LogModel;
 use CodeIgniter\API\ResponseTrait;
-use App\Models\EmpresasModel;
+use julio101290\boilerplatecompanies\Models\EmpresasModel;
 
 class Tipos_proyectoController extends BaseController {
 
@@ -47,9 +47,53 @@ class Tipos_proyectoController extends BaseController {
 
 
         if ($this->request->isAJAX()) {
-            $datos = $this->tipos_proyecto->mdlGetTipos_proyecto($empresasID);
+            $request = service('request');
 
-            return \Hermawan\DataTables\DataTable::of($datos)->toJson(true);
+            $searchValue = $request->getGet('search')['value'] ?? '';
+            $orderColumn = $request->getGet('order')[0]['column'] ?? 0;
+            $orderDir = $request->getGet('order')[0]['dir'] ?? 'asc';
+            $start = $request->getGet('start') ?? 0;
+            $length = $request->getGet('length') ?? 10;
+
+            $columnMap = [
+                0 => 'a.id',
+                1 => 'a.descripcion',
+                2 => 'b.nombre',
+                3 => 'a.created_at'
+            ];
+
+            $builder = $this->tipos_proyecto->mdlGetTipos_proyecto($empresasID);
+
+            // Filtro de búsqueda
+            if (!empty($searchValue)) {
+                $builder->groupStart()
+                        ->like('a.descripcion', $searchValue)
+                        ->orLike('b.nombre', $searchValue)
+                        ->groupEnd();
+            }
+
+            // Conteo total antes de aplicar limit
+            $totalBuilder = clone $builder;
+            $recordsFiltered = $totalBuilder->countAllResults(false);
+
+            // Ordenamiento
+            if (isset($columnMap[$orderColumn])) {
+                $builder->orderBy($columnMap[$orderColumn], $orderDir);
+            }
+
+            // Paginación
+            $builder->limit($length, $start);
+
+            // Ejecutar y obtener resultados
+            $data = $builder->get()->getResultArray();
+
+            // Respuesta compatible con DataTables
+            return $this->response->setJSON([
+                        'draw' => (int) $request->getGet('draw'),
+                        'recordsTotal' => $recordsFiltered,
+                        'recordsFiltered' => $recordsFiltered,
+                        'data' => $data
+            ]);
         }
         $titulos["title"] = lang('tipos_proyecto.title');
         $titulos["subtitle"] = lang('tipos_proyecto.subtitle');
