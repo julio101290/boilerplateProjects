@@ -97,7 +97,7 @@ class Tipos_proyectoController extends BaseController {
         }
         $titulos["title"] = lang('tipos_proyecto.title');
         $titulos["subtitle"] = lang('tipos_proyecto.subtitle');
-        return view('tipos_proyecto', $titulos);
+        return view('julio101290\boilerplateprojects\Views\tipos_proyecto', $titulos);
     }
 
     /**

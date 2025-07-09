@@ -72,7 +72,7 @@ class InstallCommandprojects extends BaseCommand
             $this->call('migrate');
             // then seed data
             $seeder = Database::seeder();
-            $seeder->call('julio101290\boilerplateproyects\Database\Seeds\BoilerplateProjects');
+            $seeder->call('julio101290\boilerplateprojects\Database\Seeds\BoilerplateProjects');
         } catch (\Exception $e) {
             $this->showError($e);
         }
