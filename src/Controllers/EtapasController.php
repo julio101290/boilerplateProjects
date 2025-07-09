@@ -9,8 +9,8 @@ use julio101290\boilerplateprojects\Models\{
 use julio101290\boilerplatelog\Models\LogModel;
 use CodeIgniter\API\ResponseTrait;
 use julio101290\boilerplatecompanies\Models\EmpresasModel;
-use App\Models\Tipos_proyectoModel;
-use App\Models\ProyectosModel;
+use julio101290\boilerplateprojects\Models\Tipos_proyectoModel;
+use julio101290\boilerplateprojects\Models\ProyectosModel;
 
 class EtapasController extends BaseController {
 
@@ -52,13 +52,43 @@ class EtapasController extends BaseController {
 
 
         if ($this->request->isAJAX()) {
-            $datos = $this->etapas->mdlGetEtapas($empresasID);
+            $draw = (int) $this->request->getGet('draw');
+            $start = (int) $this->request->getGet('start');
+            $length = (int) $this->request->getGet('length');
+            $search = $this->request->getGet('search')['value'] ?? '';
+            $orderIndex = (int) $this->request->getGet('order')[0]['column'] ?? 0;
+            $orderDir = $this->request->getGet('order')[0]['dir'] ?? 'asc';
 
-            return \Hermawan\DataTables\DataTable::of($datos)->toJson(true);
+            // Columnas visibles en el DataTable
+            $columns = [
+                'a.id',
+                'a.descripcion',
+                'tp.descripcion',
+                'a.orden',
+                'a.created_at'
+            ];
+            $orderBy = $columns[$orderIndex] ?? 'a.id';
+
+            $params = [
+                'start' => $start,
+                'length' => $length,
+                'search' => $search,
+                'orderBy' => $orderBy,
+                'orderDir' => $orderDir,
+            ];
+
+            $resultado = $this->etapas->mdlGetEtapas($empresasID, $params);
+
+            return $this->response->setJSON([
+                        'draw' => $draw,
+                        'recordsTotal' => $resultado['total'],
+                        'recordsFiltered' => $resultado['filtered'],
+                        'data' => $resultado['data'],
+            ]);
         }
         $titulos["title"] = lang('etapas.title');
         $titulos["subtitle"] = lang('etapas.subtitle');
-        return view('etapas', $titulos);
+        return view('julio101290\boilerplateprojects\Views\etapas', $titulos);
     }
 
     /**
