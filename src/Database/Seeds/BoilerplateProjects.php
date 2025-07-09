@@ -41,6 +41,12 @@ class BoilerplateProjects extends Seeder {
 
         // Assign Permission to user
         $this->authorize->addPermissionToUser('tipos_proyecto-permission', 1);
+        
+          // Permission
+        $this->authorize->createPermission('proyectos-permission', 'Permission for Projects CRUD');
+
+        // Assign Permission to user
+        $this->authorize->addPermissionToUser('proyectos-permission', 1);
 
     }
 

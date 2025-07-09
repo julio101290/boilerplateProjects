@@ -1,21 +1,18 @@
 <?php
 
-namespace App\Controllers;
+namespace julio101290\boilerplateprojects\Controllers;
 
 use App\Controllers\BaseController;
-use \App\Models\{
+use julio101290\boilerplateprojects\Models\{
     ProyectosModel
 };
-use App\Models\LogModel;
+use julio101290\boilerplatelog\Models\LogModel;
 use CodeIgniter\API\ResponseTrait;
-use App\Models\EmpresasModel;
-use App\Models\BranchofficesModel;
-use App\Models\CustumersModel;
-use App\Models\Tipos_proyectoModel;
+use julio101290\boilerplatecompanies\Models\EmpresasModel;
+use julio101290\boilerplatebranchoffice\Models\BranchofficesModel;
+use julio101290\boilerplatecustumers\Models\CustumersModel;
+use julio101290\boilerplateprojects\Models\Tipos_proyectoModel;
 use App\Models\UserModel;
-
-
-
 
 class ProyectosController extends BaseController {
 
@@ -36,7 +33,6 @@ class ProyectosController extends BaseController {
         $this->clientes = new CustumersModel();
         $this->tiposProyecto = new Tipos_proyectoModel();
         $this->usuarios = new UserModel();
-        
 
         helper('menu');
         helper('utilerias');
@@ -47,7 +43,6 @@ class ProyectosController extends BaseController {
 
 
         helper('auth');
-        
 
         $idUser = user()->id;
         $titulos["empresas"] = $this->empresa->mdlEmpresasPorUsuario($idUser);
@@ -64,13 +59,45 @@ class ProyectosController extends BaseController {
 
 
         if ($this->request->isAJAX()) {
-            $datos = $this->proyectos->mdlGetProyectos($empresasID);
+            $draw = (int) $this->request->getGet('draw');
+            $start = (int) $this->request->getGet('start');
+            $length = (int) $this->request->getGet('length');
+            $search = $this->request->getGet('search')['value'] ?? '';
+            $orderIndex = (int) $this->request->getGet('order')[0]['column'] ?? 0;
+            $orderDir = $this->request->getGet('order')[0]['dir'] ?? 'asc';
 
-            return \Hermawan\DataTables\DataTable::of($datos)->toJson(true);
+            $columns = [
+                'a.id',
+                'a.descripcion',
+                'c.name',
+                'd.descripcion',
+                'e.firstname',
+                'f.firstname',
+                'a.fechaInicio'
+            ];
+            $orderBy = $columns[$orderIndex] ?? 'a.id';
+
+
+            $params = [
+                'start' => $start,
+                'length' => $length,
+                'search' => $search,
+                'orderBy' => $orderBy,
+                'orderDir' => $orderDir,
+            ];
+
+            $resultado = $this->proyectos->mdlGetProyectos($empresasID, $params);
+
+            return $this->response->setJSON([
+                        'draw' => $draw,
+                        'recordsTotal' => $resultado['total'],
+                        'recordsFiltered' => $resultado['filtered'],
+                        'data' => $resultado['data'],
+            ]);
         }
         $titulos["title"] = lang('proyectos.title');
         $titulos["subtitle"] = lang('proyectos.subtitle');
-        return view('proyectos', $titulos);
+        return view('julio101290\boilerplateprojects\Views\proyectos', $titulos);
     }
 
     public function ctrCubo() {
@@ -402,8 +429,8 @@ class ProyectosController extends BaseController {
             $importeEtapaResumenTotal = $importeEtapaResumenTotal + $value["costoTotalEstimado"];
             $pdf->writeHTML($bloque4, false, false, false, false, '');
         }
-        
-          $clase = 'style="  padding: 3px 4px 3px; ';
+
+        $clase = 'style="  padding: 3px 4px 3px; ';
         $importeEtapaResumenTotal = number_format($importeEtapaResumenTotal, 2, ".", ",");
         $bloque4 = <<<EOF
                             <table style="font-size:12px; padding:5px 10px;  font-weight: bold;">

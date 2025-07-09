@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models;
+namespace julio101290\boilerplateprojects\Models;
 
 use CodeIgniter\Model;
 
@@ -28,121 +28,140 @@ class ProyectosModel extends Model {
     protected $validationMessages = [];
     protected $skipValidation = false;
 
-    public function mdlGetProyectos($idEmpresas) {
-
-        $result = $this->db->table('proyectos a
-                                    , empresas b
-                                    , branchoffices c
-                                    , tipos_proyecto d
-                                    , custumers e
-                                    , users f
-'
-                )
-                ->select('a.id
-                        ,a.idEmpresa
-                        ,a.idSucursal
-                        ,a.tipoProyecto
-                        ,a.descripcion
-                        ,a.fechaInicio
-                        ,a.fechaFinal
-                        ,a.idCliente
-                        ,concat(f.firstname,f.lastname) as responsable
-                        ,a.created_at
-                        ,a.updated_at
-                        ,a.deleted_at 
-                        ,b.nombre as nombreEmpresa
-                        ,c.name as nombreSucursal
-                        ,d.descripcion as nombreTipoDescripcion
-                        ,concat(e.firstname,e.lastname) as nombreCliente
-                        
-                        ')
-                ->where('a.idEmpresa', 'b.id', FALSE)
-                ->where('a.idSucursal', 'c.id', FALSE)
-                ->where('a.tipoProyecto', 'd.id', FALSE)
-                ->where('a.idCliente', 'e.id', FALSE)
-                ->where('a.responsable', 'f.id', FALSE)
+    public function mdlGetProyectos($idEmpresas, $params = []) {
+        $builder = $this->db->table('proyectos a')
+                ->join('empresas b', 'a.idEmpresa = b.id')
+                ->join('branchoffices c', 'a.idSucursal = c.id')
+                ->join('tipos_proyecto d', 'a.tipoProyecto = d.id')
+                ->join('custumers e', 'a.idCliente = e.id')
+                ->join('users f', 'a.responsable = f.id')
                 ->whereIn('a.idEmpresa', $idEmpresas);
 
-        return $result;
+        // Detectar motor de BD y usar la sintaxis correcta para CONCAT
+        if ($this->db->getPlatform() === 'MySQLi') {
+            $builder->select("
+            a.id,
+            a.idEmpresa,
+            a.idSucursal,
+            a.tipoProyecto,
+            a.descripcion,
+            a.fechaInicio,
+            a.fechaFinal,
+            a.idCliente,
+            CONCAT(f.firstname, ' ', f.lastname) AS responsable,
+            a.created_at,
+            a.updated_at,
+            a.deleted_at,
+            b.nombre AS nombreEmpresa,
+            c.name AS nombreSucursal,
+            d.descripcion AS nombreTipoDescripcion,
+            CONCAT(e.firstname, ' ', e.lastname) AS nombreCliente
+        ");
+        } else {
+            $builder->select("
+            a.id,
+            a.idEmpresa,
+            a.idSucursal,
+            a.tipoProyecto,
+            a.descripcion,
+            a.fechaInicio,
+            a.fechaFinal,
+            a.idCliente,
+            (f.firstname || ' ' || f.lastname) AS responsable,
+            a.created_at,
+            a.updated_at,
+            a.deleted_at,
+            b.nombre AS nombreEmpresa,
+            c.name AS nombreSucursal,
+            d.descripcion AS nombreTipoDescripcion,
+            (e.firstname || ' ' || e.lastname) AS nombreCliente
+        ");
+        }
+
+        // Total sin filtros
+        $total = $builder->countAllResults(false);
+
+        // Filtro de búsqueda
+        if (!empty($params['search'])) {
+            $builder->groupStart()
+                    ->like('a.descripcion', $params['search'])
+                    ->orLike('b.nombre', $params['search'])
+                    ->orLike('c.name', $params['search'])
+                    ->orLike('d.descripcion', $params['search'])
+                    ->orLike('e.firstname', $params['search'])
+                    ->orLike('f.firstname', $params['search'])
+                    ->groupEnd();
+        }
+
+        // Total filtrado
+        $filtered = $builder->countAllResults(false);
+
+        // Orden
+        if (!empty($params['orderBy']) && !empty($params['orderDir'])) {
+            $builder->orderBy($params['orderBy'], $params['orderDir']);
+        }
+
+        // Paginación
+        if (isset($params['start'], $params['length'])) {
+            $builder->limit($params['length'], $params['start']);
+        }
+
+        $data = $builder->get()->getResultArray();
+
+        return [
+            'total' => $total,
+            'filtered' => $filtered,
+            'data' => $data,
+        ];
     }
 
     public function mdlGetProyecto($idEmpresas, $idProyecto) {
+        $builder = $this->db->table('proyectos a')
+                ->select("
+            a.id,
+            a.idEmpresa,
+            a.idSucursal,
+            a.tipoProyecto,
+            a.descripcion,
+            a.fechaInicio,
+            a.fechaFinal,
+            a.idCliente,
+            a.responsable,
+            a.created_at,
+            a.updated_at,
+            a.deleted_at,
+            b.nombre AS nombreEmpresa,
+            c.name AS nombreSucursal,
+            d.descripcion AS nombreTipoDescripcion,
+            CONCAT_WS(' ', e.firstname, e.lastname) AS nombreCliente
+        ")
+                ->join('empresas b', 'a.idEmpresa = b.id')
+                ->join('branchoffices c', 'a.idSucursal = c.id')
+                ->join('tipos_proyecto d', 'a.tipoProyecto = d.id')
+                ->join('custumers e', 'a.idCliente = e.id')
+                ->whereIn('a.idEmpresa', $idEmpresas)
+                ->where('a.id', $idProyecto);
 
-        $result = $this->db->table('proyectos a
-                                    , empresas b
-                                    , branchoffices c
-                                    , tipos_proyecto d
-                                    , custumers e
-'
-                        )
-                        ->select('a.id
-                        ,a.idEmpresa
-                        ,a.idSucursal
-                        ,a.tipoProyecto
-                        ,a.descripcion
-                        ,a.fechaInicio
-                        ,a.fechaFinal
-                        ,a.idCliente
-                        ,a.responsable
-                        ,a.created_at
-                        ,a.updated_at
-                        ,a.deleted_at 
-                        ,b.nombre as nombreEmpresa
-                        ,c.name as nombreSucursal
-                        ,d.descripcion as nombreTipoDescripcion
-                        ,concat(e.firstname,e.lastname) as nombreCliente
-                        
-                        ')
-                        ->where('a.idEmpresa', 'b.id', FALSE)
-                        ->where('a.idSucursal', 'c.id', FALSE)
-                        ->where('a.tipoProyecto', 'd.id', FALSE)
-                        ->where('a.idCliente', 'e.id', FALSE)
-                        ->whereIn('a.idEmpresa', $idEmpresas)
-                        ->where('a.id', $idProyecto, FALSE)->get()->getResultArray();
+        $result = $builder->get()->getResultArray();
 
-        return $result[0];
+        return $result[0] ?? null;
     }
 
     public function mdlResumenProyecto($idProyecto) {
-
-        $result = $this->db->table('proyectos a, actividades b, etapas c, conceptos d, empresas e')
-                        ->select('a.descripcion as descripcionProyecto,c.descripcion as descripcionEtapa,sum(ifnull(b.costoTotalEstimado,0)) as costoTotalEstimado')
-                        ->where('a.id', $idProyecto)
-                        ->where('a.idEmpresa', 'e.id', FALSE)
-                        ->where('b.etapa', 'c.id', FALSE)
-                        ->where('b.concepto', 'd.id', FALSE)
-                        ->where('a.id', 'b.idProyecto', FALSE)
-                        ->groupBy(array('a.descripcion', 'c.descripcion'))
-                        ->get()->getResultArray();
-
-        return $result;
-    }
-
-    public function mdlPresupuestoProyecto($idProyecto) {
-
-        $result = $this->db->table('proyectos a
-                                    , actividades b
-                                    , etapas c
-                                    , conceptos d
-                                    , unidades_medida f
-                                    , empresas e')
-                        ->select('a.descripcion as descripcionProyecto
-                             ,c.descripcion as descripcionEtapa
-                             ,d.descripcion as descripcionConcepto
-                             ,b.descripcion as descripcionActividad
-                             ,b.cantEstimada 
-                             ,ifnull(b.costoUnitario ,0.00) as costoUnitario
-                             ,f.descripcion as descripcionUnidadMedida 
-                             ,ifnull(b.costoTotalEstimado,0.00) as costoTotalEstimado')
-                        ->where('a.id', $idProyecto)
-                        ->where('a.idEmpresa', 'e.id', FALSE)
-                        ->where('b.etapa', 'c.id', FALSE)
-                        ->where('b.concepto', 'd.id', FALSE)
-                        ->where('b.unidadMedida', 'f.id', FALSE)
-                        ->where('a.id', 'b.idProyecto', FALSE)
-                        ->orderBy('c.orden asc')
-                        ->orderBy('d.orden asc')
-                        ->get()->getResultArray();
+        $result = $this->db->table('proyectos a')
+                ->select('
+            a.descripcion AS descripcionProyecto,
+            c.descripcion AS descripcionEtapa,
+            SUM(COALESCE(b.costoTotalEstimado, 0)) AS costoTotalEstimado
+        ')
+                ->join('actividades b', 'a.id = b.idProyecto')
+                ->join('etapas c', 'b.etapa = c.id')
+                ->join('conceptos d', 'b.concepto = d.id')
+                ->join('empresas e', 'a.idEmpresa = e.id')
+                ->where('a.id', $idProyecto)
+                ->groupBy(['a.descripcion', 'c.descripcion'])
+                ->get()
+                ->getResultArray();
 
         return $result;
     }
