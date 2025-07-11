@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models;
+namespace julio101290\boilerplateprojects\Models;
 
 use CodeIgniter\Model;
 
@@ -59,234 +59,255 @@ class ActividadesModel extends Model {
     protected $validationMessages = [];
     protected $skipValidation = false;
 
-    public function mdlGetActividades($idEmpresas) {
+    public function mdlGetActividades(array $idEmpresas) {
+        $platform = $this->db->getPlatform(); // 'MySQLi' o 'Postgre'
 
-        $result = $this->db->table('actividades a
-                                    , empresas b
-                                    , proyectos c
-                                    , etapas d
-                                    , conceptos e
-                                    , unidades_medida f
-                                    ')
-                ->select('a.id,
-                         a.idEmpresa
-                         ,a.idProyecto
-                         ,a.etapa
-                         ,a.concepto
-                         ,a.descripcion
-                         ,a.fechaInicio
-                         ,a.fechaFinal
-                         ,a.cantEstimada
-                         ,a.cantReal
-                         ,a.unidadMedida
-                         ,c.descripcion as nombreProyecto
-                         ,d.descripcion as nombreEtapa
-                         ,e.descripcion as nombreConcepto
-                         ,case when a.status = \'01\' then \'Pendiente\'
-                               when a.status = \'02\' then \'Terminado\'
-                               when a.status = \'03\' then \'Cancelado\'
-                               end as descripcionStatus
-                         ,a.status    
-                         ,a.costoUnitario
-                         ,a.costoTotalEstimado
-                         ,a.costoTotalReal
-                         ,a.producto
-                         ,a.created_at
-                         ,a.updated_at
-                         ,a.deleted_at 
-                         ,b.nombre as nombreEmpresa
-                         ,f.descripcion as nombreUnidadMedida
-                         ,ifnull(a.porcAvanzado,0) as porcAvanzado
-                         ,(select concat(g.username,\' - \',g.firstname,\' \',lastname) from users g where g.id = a.idUsuario ) as  username
-                         ,(select concat(g.firstname,\' \',g.lastname) from proveedores g where g.id = a.idProveedor ) as  nombreProveedor
-                         , case when a.modalidadActividad = \'01\' then \'Interna\'
-                              when a.modalidadActividad = \'02\' then \'SubContratada\'
-                              when a.modalidadActividad = \'03\' then \'Insumo\'
-                         end as modalidadActividad     
-                                
+        $joinUnidad = $platform === 'Postgre' ? 'CAST(a.unidadMedida AS INTEGER) = f.id = f.id' : 'a.unidadMedida = f.id';
+        
+        $q = $platform === 'Postgre' ? "\"" : "\"";
+        
+        // Variables SQL según motor
+        $porcAvanzado = $platform === 'MySQLi' ? 'IFNULL(a.porcAvanzado, 0) AS porcAvanzado' : 'COALESCE(a."porcAvanzado", 0) AS "porcAvanzado"';
 
-                        ')
-                ->where('a.idEmpresa', 'b.id', FALSE)
-                ->where('a.idProyecto', 'c.id', FALSE)
-                ->where('a.etapa', 'd.id', FALSE)
-                ->where('a.concepto', 'e.id', FALSE)
-                ->where('a.unidadMedida', 'f.id', FALSE)
-                ->whereIn('a.idEmpresa', $idEmpresas);
+        $username = $platform === 'MySQLi' ? "(SELECT CONCAT(g.username, ' - ', g.firstname, ' ', g.lastname) FROM users g WHERE g.id = a.idUsuario) AS username" : "(SELECT g.username || ' - ' || g.firstname || ' ' || g.lastname FROM users g WHERE g.id = a.".$q."idUsuario".$q.") AS username";
 
-        return $result;
+        $nombreProveedor = $platform === 'MySQLi' ? "(SELECT CONCAT(g.firstname, ' ', g.lastname) FROM proveedores g WHERE g.id = a.idProveedor) AS nombreProveedor" : "(SELECT g.firstname || ' ' || g.lastname FROM proveedores g WHERE g.id = a.".$q."idProveedor".$q.") AS nombreProveedor";
+
+        return $this->db->table('actividades a')
+                        ->select("
+            a.id,
+            a.".$q."idEmpresa".$q.",
+            a.".$q."idProyecto".$q.",
+            a.etapa,
+            a.concepto,
+            a.descripcion,
+            a.".$q."fechaInicio".$q.",
+            a.".$q."fechaFinal".$q.",
+            a.".$q."cantEstimada".$q.",
+            a.".$q."cantReal".$q.",
+            a.".$q."unidadMedida".$q.",
+            c.descripcion AS ".$q."nombreProyecto".$q.",
+            d.descripcion AS ".$q."nombreEtapa".$q.",
+            e.descripcion AS ".$q."nombreConcepto,".$q."
+            CASE
+                WHEN a.status = '01' THEN 'Pendiente'
+                WHEN a.status = '02' THEN 'Terminado'
+                WHEN a.status = '03' THEN 'Cancelado'
+            END AS ".$q."descripcionStatus".$q.",
+            a.status,
+            a.".$q."costoUnitario".$q.",
+            a.".$q."costoTotalEstimado".$q.",
+            a.".$q."costoTotalReal".$q.",
+            a.producto,
+            a.created_at,
+            a.updated_at,
+            a.deleted_at,
+            b.nombre AS ".$q."nombreEmpresa".$q.",
+            f.descripcion AS ".$q."nombreUnidadMedida".$q.",
+            {$porcAvanzado},
+            {$username},
+            {$nombreProveedor},
+            CASE
+                WHEN a.".$q."modalidadActividad".$q." = '01' THEN 'Interna'
+                WHEN a.".$q."modalidadActividad".$q." = '02' THEN 'SubContratada'
+                WHEN a.".$q."modalidadActividad".$q." = '03' THEN 'Insumo'
+            END AS ".$q."modalidadActividad".$q."
+        ")
+                        ->join('empresas b', "a.".$q."idEmpresa".$q." = b.id")
+                        ->join('proyectos c', "a.".$q."idProyecto".$q." = c.id")
+                        ->join('etapas d', 'a.etapa = d.id')
+                        ->join('conceptos e', 'a.concepto = e.id')
+                        ->join('unidades_medida f', $joinUnidad)
+                        ->whereIn("a.".$q."idEmpresa".$q."", $idEmpresas);
     }
 
     /**
      * Search by filters
      */
-    public function mdlGetActividadesFilters($empresas
-            , $from
-            , $to
-            , $pendientes
-            , $empresa = 0
-            , $proyecto = 0
-            , $responsable = 0
+    public function mdlGetActividadesFilters(
+            array $empresas,
+            string $from,
+            string $to,
+            bool $pendientes,
+            int $empresa = 0,
+            int $proyecto = 0,
+            int $responsable = 0
     ) {
+        $platform = $this->db->getPlatform();
+        
+        $q = $platform === 'Postgre' ? "\"" : "\"";
+        $joinUnidad = $platform === 'Postgre' ? 'CAST(a."unidadMedida" AS INTEGER) = f.id' : 'a.unidadMedida = f.id';
 
+        // Adaptar funciones según el motor
+        $porcAvanzado = $platform === 'MySQLi' ? 'IFNULL(a.porcAvanzado, 0) AS porcAvanzado' : 'COALESCE(a."porcAvanzado", 0) AS "porcAvanzado"';
 
+        $username = $platform === 'MySQLi' ? "(SELECT CONCAT(g.username, ' - ', g.firstname, ' ', g.lastname) FROM users g WHERE g.id = a.idUsuario) AS username" : "(SELECT g.username || ' - ' || g.firstname || ' ' || g.lastname FROM users g WHERE g.id = a.".$q."idUsuario".$q.") AS username";
 
-        $result = $this->db->table('actividades a
-                                    , empresas b
-                                    , proyectos c
-                                    , etapas d
-                                    , conceptos e
-                                    , unidades_medida f
-                                    ')
-                ->select('a.id,
-                         a.idEmpresa
-                         ,a.idProyecto
-                         ,a.etapa
-                         ,a.concepto
-                         ,a.descripcion
-                         ,a.fechaInicio
-                         ,a.fechaFinal
-                         ,a.cantEstimada
-                         ,a.cantReal
-                         ,a.unidadMedida
-                         ,c.descripcion as nombreProyecto
-                         ,d.descripcion as nombreEtapa
-                         ,e.descripcion as nombreConcepto
-                         ,case when a.status = \'01\' then \'Pendiente\'
-                               when a.status = \'02\' then \'Terminado\'
-                               when a.status = \'03\' then \'Cancelado\'
-                               end as descripcionStatus
-                         ,a.status      
-                         ,a.created_at
-                         ,a.updated_at
-                         ,a.deleted_at 
-                         ,b.nombre as nombreEmpresa
-                         ,f.descripcion as nombreUnidadMedida
-                         ,ifnull(a.porcAvanzado,0) as porcAvanzado
-                         ,(select concat(g.username,\' - \',g.firstname,\' \',lastname) from users g where g.id = a.idUsuario ) as  username
-                         ,(select concat(g.firstname,\' \',g.lastname) from proveedores g where g.id = a.idProveedor ) as  nombreProveedor
-                         , case when a.modalidadActividad = \'01\' then \'Interna\'
-                              when a.modalidadActividad = \'02\' then \'SubContratada\'
-                              when a.modalidadActividad = \'03\' then \'Insumo\'
-                         end as modalidadActividad     
-                        
-                         ,a.costoUnitario
-                         ,a.costoTotalEstimado
-                         ,a.costoTotalReal
-                         ,a.producto
+        $nombreProveedor = $platform === 'MySQLi' ? "(SELECT CONCAT(g.firstname, ' ', g.lastname) FROM proveedores g WHERE g.id = a.idProveedor) AS nombreProveedor" : "(SELECT g.firstname || ' ' || g.lastname FROM proveedores g WHERE g.id = a.".$q."idProveedor".$q.") AS ".$q."nombreProveedor".$q."";
 
-                        ')
-                ->where('a.idEmpresa', 'b.id', FALSE)
-                ->where('a.idProyecto', 'c.id', FALSE)
-                ->where('a.etapa', 'd.id', FALSE)
-                ->where('a.concepto', 'e.id', FALSE)
-                ->where('a.unidadMedida', 'f.id', FALSE)
-                ->where('a.fechaInicio >=', $from . ' 00:00:00')
-                ->where('a.fechaInicio <=', $to . ' 23:59:59')
-                ->groupStart()
-                ->where('\'false\'', $pendientes, true)
-                ->orWhere('ifnull(a.porcAvanzado,0)<', 100, true)
-                ->groupEnd()
-                ->groupStart()
-                ->where('\'0\'', $empresa, true)
-                ->orWhere('a.idEmpresa', $empresa)
-                ->groupEnd()
-                ->groupStart()
-                ->where('\'0\'', $proyecto, true)
-                ->orWhere('a.idProyecto', $proyecto)
-                ->groupEnd()
-                ->groupStart()
-                ->where('\'0\'', $responsable, true)
-                ->orWhere('a.idUsuario', $responsable)
-                ->groupEnd()
-                ->whereIn('a.idEmpresa', $empresas);
+        $builder = $this->db->table('actividades a')
+                ->select("
+            a.id,
+            a.".$q."idEmpresa".$q.",
+            a.".$q."idProyecto".$q.",
+            a.etapa,
+            a.concepto,
+            a.descripcion,
+            a.".$q."fechaInicio".$q.",
+            a.".$q."fechaFinal".$q.",
+            a.".$q."cantEstimada".$q.",
+            a.".$q."cantReal".$q.",
+            a.".$q."unidadMedida".$q.",
+            c.descripcion AS ".$q."nombreProyecto".$q.",
+            d.descripcion AS ".$q."nombreEtapa".$q.",
+            e.descripcion AS ".$q."nombreConcepto".$q.",
+            CASE
+                WHEN a.status = '01' THEN 'Pendiente'
+                WHEN a.status = '02' THEN 'Terminado'
+                WHEN a.status = '03' THEN 'Cancelado'
+            END AS ".$q."descripcionStatus".$q.",
+            a.status,
+            a.created_at,
+            a.updated_at,
+            a.deleted_at,
+            b.nombre AS ".$q."nombreEmpresa".$q.",
+            f.descripcion AS ".$q."nombreUnidadMedida".$q.",
+            {$porcAvanzado},
+            {$username},
+            {$nombreProveedor},
+            CASE
+                WHEN a.".$q."modalidadActividad".$q." = '01' THEN 'Interna'
+                WHEN a.".$q."modalidadActividad".$q." = '02' THEN 'SubContratada'
+                WHEN a.".$q."modalidadActividad".$q." = '03' THEN 'Insumo'
+            END AS ".$q."modalidadActividad".$q.",
+            a.".$q."costoUnitario".$q.",
+            a.".$q."costoTotalEstimado".$q.",
+            a.".$q."costoTotalReal".$q.",
+            a.producto
+        ")
+                ->join('empresas b', "a.".$q."idEmpresa".$q." = b.id")
+                ->join('proyectos c', 'a.idProyecto = c.id')
+                ->join('etapas d', 'a.etapa = d.id')
+                ->join('conceptos e', 'a.concepto = e.id')
+                ->join('unidades_medida f', $joinUnidad)
+                ->whereIn('a.idEmpresa', $empresas)
+                ->where('a.fechaInicio >=', "{$from} 00:00:00")
+                ->where('a.fechaInicio <=', "{$to} 23:59:59");
 
-        return $result;
+        // Filtro: mostrar sólo actividades pendientes si se solicita
+        if ($pendientes) {
+            $builder->groupStart()
+                    ->where("a.".$q."porcAvanzado".$q." <", 100)
+                    ->orWhere("a.".$q."porcAvanzado".$q." IS NULL", null, false)
+                    ->groupEnd();
+        }
+
+        // Filtros opcionales
+        if ($empresa != 0) {
+            $builder->where("a.".$q."idEmpresa".$q."", $empresa);
+        }
+
+        if ($proyecto != 0) {
+            $builder->where("a.".$q."idProyecto".$q."", $proyecto);
+        }
+
+        if ($responsable != 0) {
+            $builder->where("a.".$q."idUsuario".$q."", $responsable);
+        }
+
+        return $builder;
     }
 
     /**
-     * ACtividades para el cubo
+     * Actividades para el cubo
      */
-    public function mdlGetActividadesFiltersCubo($empresas
-            , $from
-            , $to
-            , $pendientes
-            , $empresa = 0
-            , $proyecto = 0
-            , $responsable = 0
+    public function mdlGetActividadesFiltersCubo(
+            array $empresas,
+            string $from,
+            string $to,
+            bool $pendientes,
+            int $empresa = 0,
+            int $proyecto = 0,
+            int $responsable = 0
     ) {
+        $platform = $this->db->getPlatform();
+        $joinUnidad = $platform === 'Postgre' ? 'CAST(a.unidadMedida AS INTEGER) = f.id' : 'a.unidadMedida = f.id';
+        // Compatibilidad con funciones de cada motor
+        $porcAvanzado = $platform === 'MySQLi' ? 'IFNULL(a.porcAvanzado, 0) AS porcAvanzado' : 'COALESCE(a.porcAvanzado, 0) AS porcAvanzado';
 
+        $username = $platform === 'MySQLi' ? "(SELECT CONCAT(g.username, ' - ', g.firstname, ' ', g.lastname) FROM users g WHERE g.id = a.idUsuario) AS username" : "(SELECT g.username || ' - ' || g.firstname || ' ' || g.lastname FROM users g WHERE g.id = a.idUsuario) AS username";
 
+        $nombreProveedor = $platform === 'MySQLi' ? "(SELECT CONCAT(g.firstname, ' ', g.lastname) FROM proveedores g WHERE g.id = a.idProveedor) AS nombreProveedor" : "(SELECT g.firstname || ' ' || g.lastname FROM proveedores g WHERE g.id = a.idProveedor) AS nombreProveedor";
 
-        $result = $this->db->table('actividades a
-                                    , empresas b
-                                    , proyectos c
-                                    , etapas d
-                                    , conceptos e
-                                    , unidades_medida f
-                                    ')
-                        ->select('
-                         b.nombre as nombreEmpresa
-                         ,c.descripcion as nombreProyecto
-                         ,d.descripcion as nombreEtapa
-                         ,e.descripcion as nombreConcepto
-                          ,a.descripcion as descripcionActividad
-                         ,a.cantEstimada
-                         ,a.cantReal
-                         ,ifnull(a.porcAvanzado,0) as porcAvanzado
-                         ,case when a.status = \'01\' then \'Pendiente\'
-                               when a.status = \'02\' then \'Terminado\'
-                               when a.status = \'03\' then \'Cancelado\'
-                               end as descripcionStatus
-                         ,f.descripcion as nombreUnidadMedida
-                         ,(select concat(g.username,\' - \',g.firstname,\' \',lastname) from users g where g.id = a.idUsuario ) as  username
-                         ,(select concat(g.firstname,\' \',g.lastname) from proveedores g where g.id = a.idProveedor ) as  nombreProveedor
-                         , case when a.modalidadActividad = \'01\' then \'Interna\'
-                              when a.modalidadActividad = \'02\' then \'SubContratada\'
-                              when a.modalidadActividad = \'03\' then \'Insumo\'
-                         end as modalidadActividad     
-                                
-                         ,a.costoUnitario
-                         ,a.costoTotalEstimado
-                         ,a.costoTotalReal
-                         ,a.producto
-                         
-                        ')
-                        ->where('a.idEmpresa', 'b.id', FALSE)
-                        ->where('a.idProyecto', 'c.id', FALSE)
-                        ->where('a.etapa', 'd.id', FALSE)
-                        ->where('a.concepto', 'e.id', FALSE)
-                        ->where('a.unidadMedida', 'f.id', FALSE)
-                        ->where('a.fechaInicio >=', $from . ' 00:00:00')
-                        ->where('a.fechaInicio <=', $to . ' 23:59:59')
-                        ->groupStart()
-                        ->where('\'false\'', $pendientes, true)
-                        ->orWhere('ifnull(a.porcAvanzado,0)<', 100, true)
-                        ->groupEnd()
-                        ->groupStart()
-                        ->where('\'0\'', $empresa, true)
-                        ->orWhere('a.idEmpresa', $empresa)
-                        ->groupEnd()
-                        ->groupStart()
-                        ->where('\'0\'', $proyecto, true)
-                        ->orWhere('a.idProyecto', $proyecto)
-                        ->groupEnd()
-                        ->groupStart()
-                        ->where('\'0\'', $responsable, true)
-                        ->orWhere('a.idUsuario', $responsable)
-                        ->groupEnd()
-                        ->whereIn('a.idEmpresa', $empresas)->get()->getResultArray();
+        $builder = $this->db->table('actividades a')
+                ->select("
+            b.nombre AS ".$q."nombreEmpresa".$q.",
+            c.descripcion AS ".$q."nombreProyecto".$q.",
+            d.descripcion AS ".$q."nombreEtapa".$q.",
+            e.descripcion AS ".$q."nombreConcepto".$q.",
+            a.descripcion AS ".$q."descripcionActividad".$q.",
+            a.".$q."cantEstimada".$q.",
+            a.cantReal,
+            {$porcAvanzado},
+            CASE
+                WHEN a.status = '01' THEN 'Pendiente'
+                WHEN a.status = '02' THEN 'Terminado'
+                WHEN a.status = '03' THEN 'Cancelado'
+            END AS ".$q."descripcionStatus".$q.",
+            f.descripcion AS ".$q."nombreUnidadMedida".$q.",
+            {$username},
+            {$nombreProveedor},
+            CASE
+                WHEN a.".$q."modalidadActividad".$q." = '01' THEN 'Interna'
+                WHEN a.".$q."modalidadActividad".$q." = '02' THEN 'SubContratada'
+                WHEN a.".$q."modalidadActividad".$q." = '03' THEN 'Insumo'
+            END AS ".$q."modalidadActividad".$q.",
+            a.".$q."costoUnitario".$q.",
+            a.".$q."costoTotalEstimado".$q.",
+            a.".$q."costoTotalReal".$q.",
+            a.producto
+        ")
+                ->join('empresas b', 'a.".$q."idEmpresa".$q." = b.id')
+                ->join('proyectos c', 'a.".$q."idProyecto".$q." = c.id')
+                ->join('etapas d', 'a.etapa = d.id')
+                ->join('conceptos e', 'a.concepto = e.id')
+                ->join('unidades_medida f', $joinUnidad)
+                ->whereIn('a.".$q."idEmpresa".$q."', $empresas)
+                ->where('a.".$q."fechaInicio".$q." >=', "{$from} 00:00:00")
+                ->where('a.".$q."fechaInicio".$q." <=', "{$to} 23:59:59");
 
-        return $result;
+        // Pendientes (solo si se requiere)
+        if ($pendientes) {
+            $builder->groupStart()
+                    ->where('a.".$q."porcAvanzado <', 100)
+                    ->orWhere('a.porcAvanzado IS NULL', null, false)
+                    ->groupEnd();
+        }
+
+        // Filtros dinámicos
+        if ($empresa !== 0) {
+            $builder->where("a.".$q."idEmpresa".$q."", $empresa);
+        }
+
+        if ($proyecto !== 0) {
+            $builder->where("a.".$q."idProyecto".$q."", $proyecto);
+        }
+
+        if ($responsable !== 0) {
+            $builder->where("a.".$q."idUsuario".$q."", $responsable);
+        }
+
+        return $builder->get()->getResultArray();
     }
 
     public function mdlTotalRegistros($desdeFecha, $hastaFecha) {
 
         $result = $this->db->table('actividades a')
-                ->selectCount('id', 'totalRegistros')
-                ->where('created_at >=', $desdeFecha)
-                ->where('created_at <=',$hastaFecha)
-                ->get()->getResultArray();
-        
+                        ->selectCount('id', 'totalRegistros')
+                        ->where('created_at >=', $desdeFecha)
+                        ->where('created_at <=', $hastaFecha)
+                        ->get()->getResultArray();
+
         return $result;
     }
 }

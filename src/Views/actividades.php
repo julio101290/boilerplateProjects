@@ -1,8 +1,8 @@
-<?= $this->include('load/daterangapicker') ?>
-<?= $this->include('load/toggle') ?>
+<?= $this->include('julio101290\boilerplate\Views\load/daterangapicker') ?>
+<?= $this->include('julio101290\boilerplate\Views\load/toggle') ?>
 <?= $this->include('julio101290\boilerplate\Views\load\select2') ?>
 <?= $this->include('julio101290\boilerplate\Views\load\datatables') ?>
-<?= $this->include('load/extrasDatatable') ?>
+<?= $this->include('julio101290\boilerplate\Views\load/extrasDatatable') ?>
 <?= $this->include('julio101290\boilerplate\Views\load\nestable') ?>
 <!-- Extend from layout index -->
 <?= $this->extend('julio101290\boilerplate\Views\layout\index') ?>
@@ -10,9 +10,9 @@
 <!-- Section content -->
 <?= $this->section('content') ?>
 
-<?= $this->include('modulesActividades/modalCaptureActividades') ?>
-<?= $this->include('modulesActividades/modalAvances') ?>
-<?= $this->include('modulesActividades/ListaAvances') ?>
+<?= $this->include('julio101290\boilerplateprojects\Views/modulesActividades/modalCaptureActividades') ?>
+<?= $this->include('julio101290\boilerplateprojects\Views/modulesActividades/modalAvances') ?>
+<?= $this->include('julio101290\boilerplateprojects\Views/modulesActividades/ListaAvances') ?>
 
 <!-- SELECT2 EXAMPLE -->
 <div class="card card-default">

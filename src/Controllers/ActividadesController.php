@@ -12,11 +12,15 @@ use julio101290\boilerplatecompanies\Models\EmpresasModel;
 use julio101290\boilerplateprojects\Models\EtapasModel;
 use julio101290\boilerplateprojects\Models\ProyectosModel;
 use julio101290\boilerplateprojects\Models\ConceptosModel;
-use julio101290\boilerplateprojects\Models\Unidades_medidaModel;
+use julio101290\boilerplateunidadesmedidas\Models\{
+    Unidades_medidaModel
+};
 use App\Models\UserModel;
 use julio101290\boilerplateproducts\Models\ProductsModel;
 use App\Controllers\LicenciasController;
-use App\Models\LicenciasModel;
+
+//use julio101290\boilerplatelicences\LicenciasModel;
+
 
 class ActividadesController extends BaseController {
 
@@ -44,8 +48,8 @@ class ActividadesController extends BaseController {
         $this->unidadesMedida = new Unidades_medidaModel();
         $this->usuarios = new UserModel();
         $this->productos = new ProductsModel();
-        $this->licencias = new LicenciasController();
-        $this->licenciasModelo = new LicenciasModel();
+        //   $this->licencias = new LicenciasController();
+        //  $this->licenciasModelo = new LicenciasModel();
 
         helper('menu');
         helper('utilerias');
@@ -72,24 +76,27 @@ class ActividadesController extends BaseController {
 
 
         if ($this->request->isAJAX()) {
-            $datos = $this->actividades->mdlGetActividades($empresasID);
 
-            return \Hermawan\DataTables\DataTable::of($datos)->toJson(true);
+
+            // Respuesta JSON al estilo DataTables
+            return $this->response->setJSON([
+                        'draw' => (int) $request->getPost('draw'),
+                        'recordsTotal' => 0,
+                        'recordsFiltered' => 0,
+                        'data' => [],
+            ]);
         }
         $titulos["title"] = lang('actividades.title');
         $titulos["subtitle"] = lang('actividades.subtitle');
-        return view('actividades', $titulos);
+        return view('julio101290\boilerplateprojects\Views\actividades', $titulos);
     }
-    
-    
-    
+
     /**
      * 
      * Actividades desde caja
      * 
      */
-    
-        public function actividadesDesdeCaja($caja) {
+    public function actividadesDesdeCaja($caja) {
 
 
 
@@ -110,15 +117,67 @@ class ActividadesController extends BaseController {
 
 
         if ($this->request->isAJAX()) {
-            $datos = $this->actividades->mdlGetActividades($empresasID);
+            $request = service('request');
 
-            return \Hermawan\DataTables\DataTable::of($datos)->toJson(true);
+            $builder = $this->actividades->mdlGetActividades($empresasID);
+
+            // DataTables parameters
+            $search = $request->getPost('search')['value'] ?? '';
+            $start = (int) $request->getPost('start') ?? 0;
+            $length = (int) $request->getPost('length') ?? 10;
+            $orderCol = $request->getPost('order')[0]['column'] ?? 0;
+            $orderDir = $request->getPost('order')[0]['dir'] ?? 'asc';
+            $columns = $request->getPost('columns') ?? [];
+
+            // Column names (must match your frontend columns)
+            $fields = [
+                'a.id', 'a.idEmpresa', 'a.idProyecto', 'a.etapa', 'a.concepto',
+                'a.descripcion', 'a.fechaInicio', 'a.fechaFinal', 'a.cantEstimada',
+                'a.cantReal', 'a.unidadMedida', 'c.descripcion', 'd.descripcion',
+                'e.descripcion', 'a.status', 'a.costoUnitario', 'a.costoTotalEstimado',
+                'a.costoTotalReal', 'a.producto', 'a.created_at', 'a.updated_at',
+                'a.deleted_at', 'b.nombre', 'f.descripcion', 'a.porcAvanzado'
+            ];
+
+            // Ordenar por columna seleccionada
+            $orderBy = $fields[$orderCol] ?? 'a.id';
+            $builder->orderBy($orderBy, $orderDir);
+
+            // Búsqueda global
+            if (!empty($search)) {
+                $builder->groupStart();
+                foreach ($fields as $field) {
+                    $builder->orLike($field, $search);
+                }
+                $builder->groupEnd();
+            }
+
+            // Total sin filtros
+            $totalRecords = $this->actividades->mdlGetActividades($empresasID)->countAllResults(false);
+
+            // Total con filtros
+            $filteredBuilder = clone $builder;
+            $totalFiltered = $filteredBuilder->countAllResults();
+
+            // Paginación
+            $builder->limit($length, $start);
+
+            // Obtener resultados
+            $data = $builder->get()->getResult();
+
+            // Respuesta JSON al estilo DataTables
+            return $this->response->setJSON([
+                        'draw' => (int) $request->getPost('draw'),
+                        'recordsTotal' => $totalRecords,
+                        'recordsFiltered' => $totalFiltered,
+                        'data' => $data,
+            ]);
         }
-        
+
         $titulos[$caja] = $caja;
         $titulos["title"] = lang('actividades.title');
         $titulos["subtitle"] = lang('actividades.subtitle');
-        return view('actividades', $titulos);
+        return view('julio101290\boilerplateprojects\Views\actividades', $titulos);
     }
 
     /**
@@ -180,7 +239,6 @@ class ActividadesController extends BaseController {
 
 
             $datosProducto = $this->productos->find($datosActividades["producto"]);
-         
 
             $datosActividades["nombreProducto"] = $datosProducto["description"];
         }
@@ -228,9 +286,56 @@ class ActividadesController extends BaseController {
         if ($this->request->isAJAX()) {
 
 
-            $datos = $this->actividades->mdlGetActividadesFilters($empresasID, $desdeFecha, $hastaFecha, $pendientes, $empresa, $proyecto, $responsable);
+            $request = service('request');
 
-            return \Hermawan\DataTables\DataTable::of($datos)->toJson(true);
+            $builder = $this->actividades->mdlGetActividadesFilters($empresasID, $desdeFecha, $hastaFecha, $pendientes, $empresa, $proyecto, $responsable);
+
+            // DataTables parámetros
+            $search = $request->getPost('search')['value'] ?? '';
+            $start = (int) $request->getPost('start') ?? 0;
+            $length = (int) $request->getPost('length') ?? 10;
+            $orderCol = $request->getPost('order')[0]['column'] ?? 0;
+            $orderDir = $request->getPost('order')[0]['dir'] ?? 'asc';
+
+            // Columnas visibles en DataTable (ajusta según tus columnas)
+            $fields = [
+                'a.id', 'a.descripcion', 'c.descripcion', 'd.descripcion', 'e.descripcion',
+                'a.fechaInicio', 'a.fechaFinal', 'a.status', 'a.porcAvanzado',
+                'a.costoUnitario', 'a.costoTotalEstimado', 'a.producto', 'b.nombre',
+                'f.descripcion', 'a.created_at', 'a.updated_at'
+            ];
+            $orderBy = $fields[$orderCol] ?? 'a.id';
+
+            // Búsqueda general
+            if (!empty($search)) {
+                $builder->groupStart();
+                foreach ($fields as $field) {
+                    $builder->orLike($field, $search);
+                }
+                $builder->groupEnd();
+            }
+
+            // Conteo total sin filtro
+            $base = $this->actividades->mdlGetActividadesFilters($empresasID, $desdeFecha, $hastaFecha, $pendientes, $empresa, $proyecto, $responsable);
+            $totalRecords = $base->countAllResults(false); // evita reinicio del builder
+            // Conteo con filtro aplicado
+            $filteredBuilder = clone $builder;
+            $totalFiltered = $filteredBuilder->countAllResults();
+
+            // Orden y paginación
+            $builder->orderBy($orderBy, $orderDir)
+                    ->limit($length, $start);
+
+            // Obtener datos
+            $data = $builder->get()->getResult();
+
+            // Respuesta tipo DataTables
+            return $this->response->setJSON([
+                        'draw' => (int) $request->getPost('draw'),
+                        'recordsTotal' => $totalRecords,
+                        'recordsFiltered' => $totalFiltered,
+                        'data' => $data
+            ]);
         }
     }
 
@@ -286,48 +391,60 @@ class ActividadesController extends BaseController {
         $userName = user()->username;
         $idUser = user()->id;
         $datos = $this->request->getPost();
-        
+
         /**
          * Generamos cadena
          */
-        $datosEmpresa = $this->empresa->find($datos["idEmpresa"]);
-        
-        
-        $licenciaDisponible = $this->licenciasModelo->mdlObtenerLicencia(fechaActual(),"PROY");
-        
-        if(count($licenciaDisponible)>0){
-            
-            $licenciaDisponible = $licenciaDisponible[0];
-              
-             $cadena = $datosEmpresa["nombre"].$datosEmpresa["rfc"]."PROY".$licenciaDisponible["desdeFecha"].$licenciaDisponible["hastaFecha"]."DegreeLessnessMode_On";
-            
-        }else{
-            
-             $cadena = $datosEmpresa["nombre"].$datosEmpresa["rfc"]."PROY".fechaActualGuion();
-            
+        /*
+          $datosEmpresa = $this->empresa->find($datos["idEmpresa"]);
+
+
+          $licenciaDisponible = $this->licenciasModelo->mdlObtenerLicencia(fechaActual(),"PROY");
+
+          if(count($licenciaDisponible)>0){
+
+          $licenciaDisponible = $licenciaDisponible[0];
+
+          $cadena = $datosEmpresa["nombre"].$datosEmpresa["rfc"]."PROY".$licenciaDisponible["desdeFecha"].$licenciaDisponible["hastaFecha"]."DegreeLessnessMode_On";
+
+          }else{
+
+          $cadena = $datosEmpresa["nombre"].$datosEmpresa["rfc"]."PROY".fechaActualGuion();
+
+          }
+
+
+
+          $validaLicencia = $this->licencias->ctrValidarLicencia($cadena, fechaActualGuion(), "PROY");
+
+          if(!$validaLicencia){
+
+          $totalRegistros = $this->actividades->mdlTotalRegistros( fechaActualRestarDias(30),fechaActual());
+
+          $totalRegistros= $totalRegistros[0]["totalRegistros"];
+
+          $maxRegistros =10;
+          if($totalRegistros>$maxRegistros){
+
+          echo "Solo se permiten $maxRegistros registros en los ultimo 30 en la version demo";
+          return;
+          }
+
+          }
+         */
+
+        if ($datos["cantReal"] == "") {
+            $datos["cantReal"] = "0";
         }
-  
-       
         
-        $validaLicencia = $this->licencias->ctrValidarLicencia($cadena, fechaActualGuion(), "PROY");
-        
-        if(!$validaLicencia){
-            
-            $totalRegistros = $this->actividades->mdlTotalRegistros( fechaActualRestarDias(30),fechaActual());
-            
-            $totalRegistros= $totalRegistros[0]["totalRegistros"];
-            
-            $maxRegistros =10;
-            if($totalRegistros>$maxRegistros){
-                
-                echo "Solo se permiten $maxRegistros registros en los ultimo 30 en la version demo";
-                return;
-            }
-            
+         if ($datos["cantReal"] == "") {
+            $datos["cantReal"] = "0";
         }
-        
+
+
         if ($datos["idActividades"] == 0) {
             try {
+
                 if ($this->actividades->save($datos) === false) {
                     $errores = $this->actividades->errors();
                     foreach ($errores as $field => $error) {

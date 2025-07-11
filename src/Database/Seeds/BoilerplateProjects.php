@@ -53,12 +53,18 @@ class BoilerplateProjects extends Seeder {
 
         // Assign Permission to user
         $this->authorize->addPermissionToUser('etapas-permission', 1);
-        
-          // Permission
+
+        // Permission
         $this->authorize->createPermission('conceptos-permission', 'Permission for concepts CRUD');
 
         // Assign Permission to user
         $this->authorize->addPermissionToUser('conceptos-permission', 1);
+
+        // Permission
+        $this->authorize->createPermission('actividades-permission', 'Permission for task CRUD');
+
+        // Assign Permission to user
+        $this->authorize->addPermissionToUser('actividades-permission', 1);
     }
 
     public function down() {

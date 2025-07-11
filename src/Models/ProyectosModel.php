@@ -74,7 +74,7 @@ class ProyectosModel extends Model {
             b.nombre AS nombreEmpresa,
             c.name AS nombreSucursal,
             d.descripcion AS nombreTipoDescripcion,
-            (e.firstname || ' ' || e.lastname) AS nombreCliente
+            (e.firstname || ' ' || e.lastname) AS \"nombreCliente\"
         ");
         }
 
@@ -116,8 +116,11 @@ class ProyectosModel extends Model {
     }
 
     public function mdlGetProyecto($idEmpresas, $idProyecto) {
-        $builder = $this->db->table('proyectos a')
-                ->select("
+        $builder = $this->db->table('proyectos a');
+
+        if ($this->db->getPlatform() === 'MySQLi') {
+            // Versión para MariaDB/MySQL
+            $builder->select("
             a.id,
             a.idEmpresa,
             a.idSucursal,
@@ -134,8 +137,30 @@ class ProyectosModel extends Model {
             c.name AS nombreSucursal,
             d.descripcion AS nombreTipoDescripcion,
             CONCAT_WS(' ', e.firstname, e.lastname) AS nombreCliente
-        ")
-                ->join('empresas b', 'a.idEmpresa = b.id')
+        ");
+        } else {
+            // Versión para PostgreSQL con comillas en los alias
+            $builder->select("
+            a.id,
+            a.idEmpresa,
+            a.idSucursal,
+            a.tipoProyecto,
+            a.descripcion,
+            a.fechaInicio,
+            a.fechaFinal,
+            a.idCliente,
+            a.responsable,
+            a.created_at,
+            a.updated_at,
+            a.deleted_at,
+            b.nombre AS \"nombreEmpresa\",
+            c.name AS \"nombreSucursal\",
+            d.descripcion AS \"nombreTipoDescripcion\",
+            (e.firstname || ' ' || e.lastname) AS \"nombreCliente\"
+        ");
+        }
+
+        $builder->join('empresas b', 'a.idEmpresa = b.id')
                 ->join('branchoffices c', 'a.idSucursal = c.id')
                 ->join('tipos_proyecto d', 'a.tipoProyecto = d.id')
                 ->join('custumers e', 'a.idCliente = e.id')
@@ -148,21 +173,74 @@ class ProyectosModel extends Model {
     }
 
     public function mdlResumenProyecto($idProyecto) {
-        $result = $this->db->table('proyectos a')
-                ->select('
+        $builder = $this->db->table('proyectos a');
+
+        if ($this->db->getPlatform() === 'MySQLi') {
+            // MariaDB/MySQL
+            $builder->select('
             a.descripcion AS descripcionProyecto,
             c.descripcion AS descripcionEtapa,
             SUM(COALESCE(b.costoTotalEstimado, 0)) AS costoTotalEstimado
-        ')
-                ->join('actividades b', 'a.id = b.idProyecto')
+        ');
+        } else {
+            // PostgreSQL
+            $builder->select('
+            a.descripcion AS "descripcionProyecto",
+            c.descripcion AS "descripcionEtapa",
+            SUM(COALESCE(b.costoTotalEstimado, 0)) AS "costoTotalEstimado"
+        ');
+        }
+
+        $builder->join('actividades b', 'a.id = b.idProyecto')
                 ->join('etapas c', 'b.etapa = c.id')
                 ->join('conceptos d', 'b.concepto = d.id')
                 ->join('empresas e', 'a.idEmpresa = e.id')
                 ->where('a.id', $idProyecto)
-                ->groupBy(['a.descripcion', 'c.descripcion'])
-                ->get()
-                ->getResultArray();
+                ->groupBy(['a.descripcion', 'c.descripcion']);
 
+        $result = $builder->get()->getResultArray();
+        return $result;
+    }
+
+    public function mdlPresupuestoProyecto($idProyecto) {
+        $builder = $this->db->table('proyectos a');
+
+        if ($this->db->getPlatform() === 'MySQLi') {
+            // MariaDB / MySQL
+            $builder->select('
+            a.descripcion as descripcionProyecto,
+            c.descripcion as descripcionEtapa,
+            d.descripcion as descripcionConcepto,
+            b.descripcion as descripcionActividad,
+            b.cantEstimada,
+            COALESCE(b.costoUnitario, 0.00) as costoUnitario,
+            f.descripcion as descripcionUnidadMedida,
+            COALESCE(b.costoTotalEstimado, 0.00) as costoTotalEstimado
+        ');
+        } else {
+            // PostgreSQL
+            $builder->select('
+            a.descripcion as "descripcionProyecto",
+            c.descripcion as "descripcionEtapa",
+            d.descripcion as "descripcionConcepto",
+            b.descripcion as "descripcionActividad",
+            b.cantEstimada,
+            COALESCE(b.costoUnitario, 0.00) as "costoUnitario",
+            f.descripcion as "descripcionUnidadMedida",
+            COALESCE(b.costoTotalEstimado, 0.00) as "costoTotalEstimado"
+        ');
+        }
+
+        $builder->join('actividades b', 'a.id = b.idProyecto');
+        $builder->join('etapas c', 'b.etapa = c.id');
+        $builder->join('conceptos d', 'b.concepto = d.id');
+        $builder->join('unidades_medida f', 'b.unidadMedida = f.id');
+        $builder->join('empresas e', 'a.idEmpresa = e.id');
+        $builder->where('a.id', $idProyecto);
+        $builder->orderBy('c.orden', 'asc');
+        $builder->orderBy('d.orden', 'asc');
+
+        $result = $builder->get()->getResultArray();
         return $result;
     }
 }

@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Controllers;
+namespace julio101290\boilerplateprojects\Controllers;
 
 use App\Controllers\BaseController;
-use App\Models\AvanceActividadesModel;
-use App\Models\ActividadesModel;
-use App\Models\LogModel;
+use julio101290\boilerplateprojects\Models\AvanceActividadesModel;
+use julio101290\boilerplateprojects\Models\ActividadesModel;
+use julio101290\boilerplatelog\Models\LogModel;
 use CodeIgniter\API\ResponseTrait;
 use Exception;
 
@@ -27,20 +27,58 @@ class AvancesActividadesController extends BaseController {
 
     public function index() {
         if ($this->request->isAJAX()) {
-            $datos = $this->avancesActividades->select(' id
-                                                        , idActividad
-                                                        , fechaActual
-                                                        , descripcion
-                                                        , porcentaje 
-                                                        , horas 
-                                                        , created_at
-                                                        , updated_at
-                                                        , deleted_at')->where('deleted_at', null);
-            return \Hermawan\DataTables\DataTable::of($datos)->toJson(true);
+            $request = service('request');
+            $db = db_connect();
+            $builder = $this->avancesActividades->getBaseQuery();
+
+            // Parámetros de DataTables
+            $search = $request->getPost('search')['value'] ?? '';
+            $start = (int) $request->getPost('start') ?? 0;
+            $length = (int) $request->getPost('length') ?? 10;
+            $orderCol = $request->getPost('order')[0]['column'] ?? 0;
+            $orderDir = $request->getPost('order')[0]['dir'] ?? 'asc';
+            $columns = $request->getPost('columns');
+
+            // Columnas disponibles (orden debe coincidir con DataTable)
+            $fields = ['id', 'idActividad', 'fechaActual', 'descripcion', 'porcentaje', 'horas', 'created_at', 'updated_at', 'deleted_at'];
+            $orderBy = $fields[$orderCol] ?? 'id';
+
+            // Filtro de búsqueda
+            if (!empty($search)) {
+                $builder->groupStart();
+                foreach ($fields as $field) {
+                    $builder->orLike($field, $search);
+                }
+                $builder->groupEnd();
+            }
+
+            // Total sin filtro
+            $totalRecords = $this->avancesActividades
+                    ->where('deleted_at', null)
+                    ->countAllResults(false); // false evita reset del query builder
+            // Total con filtro
+            $filteredRecords = clone $builder;
+            $totalFiltered = $filteredRecords->countAllResults();
+
+            // Orden y paginación
+            $builder->orderBy($orderBy, $orderDir)
+                    ->limit($length, $start);
+
+            // Ejecutar
+            $query = $builder->get();
+            $data = $query->getResult();
+
+            // Formato final
+            return $this->response->setJSON([
+                        'draw' => (int) $request->getPost('draw'),
+                        'recordsTotal' => $totalRecords,
+                        'recordsFiltered' => $totalFiltered,
+                        'data' => $data
+            ]);
         }
         $titulos["title"] = "Avance de actividad";
         $titulos["subtitle"] = "Seguimiento de actividades";
-        return view('avanceActividades', $titulos);
+        return view('julio101290\boilerplateprojects\Views\avanceActividades', $titulos);
     }
 
     /**
@@ -123,9 +161,7 @@ class AvancesActividadesController extends BaseController {
 
                 $datosActividadGuardar["porcAvanzado"] = $datosActividad["porcAvanzado"] + $datos["porcentaje"];
                 $datosActividadGuardar["cantReal"] = $datosActividad["cantReal"] + $datos["horas"];
-                
-                
- 
+
                 $datosActividadGuardar["costoTotalReal"] = $datosActividadGuardar["cantReal"] * $datosActividad["costoUnitario"];
 
                 if ($datosActividadGuardar["porcAvanzado"] == 100) {
@@ -169,20 +205,57 @@ class AvancesActividadesController extends BaseController {
 
 
 
-        $datos = $this->avancesActividades
-                ->select('id'
-                        . ',idActividad'
-                        . ',fecha'
-                        . ',descripcion'
-                        . ',porcentaje'
-                        . ',horas'
-                        . ',created_at'
-                        . ',updated_at'
-                        . ',deleted_at')
+        $request = service('request');
+        $builder = $this->avancesActividades
+                ->select('id, idActividad, fecha, descripcion, porcentaje, horas, created_at, updated_at, deleted_at')
                 ->where('deleted_at', null)
                 ->where('idActividad', $id);
 
-        return \Hermawan\DataTables\DataTable::of($datos)->toJson(true);
+        // Parámetros de DataTables
+        $search = $request->getPost('search')['value'] ?? '';
+        $start = (int) $request->getPost('start') ?? 0;
+        $length = (int) $request->getPost('length') ?? 10;
+        $orderCol = $request->getPost('order')[0]['column'] ?? 0;
+        $orderDir = $request->getPost('order')[0]['dir'] ?? 'asc';
+        $columns = $request->getPost('columns');
+
+        // Columnas disponibles
+        $fields = ['id', 'idActividad', 'fecha', 'descripcion', 'porcentaje', 'horas', 'created_at', 'updated_at', 'deleted_at'];
+        $orderBy = $fields[$orderCol] ?? 'id';
+
+        // Filtro de búsqueda
+        if (!empty($search)) {
+            $builder->groupStart();
+            foreach ($fields as $field) {
+                $builder->orLike($field, $search);
+            }
+            $builder->groupEnd();
+        }
+
+        // Total sin filtro
+        $totalRecords = $this->avancesActividades
+                ->where('deleted_at', null)
+                ->where('idActividad', $id)
+                ->countAllResults(false); // false: para no reiniciar el builder
+        // Total con filtro
+        $filteredBuilder = clone $builder;
+        $totalFiltered = $filteredBuilder->countAllResults();
+
+        // Aplicar orden y paginación
+        $builder->orderBy($orderBy, $orderDir)
+                ->limit($length, $start);
+
+        // Obtener resultados
+        $query = $builder->get();
+        $data = $query->getResult();
+
+        // Formato JSON para DataTables
+        return $this->response->setJSON([
+                    'draw' => (int) $request->getPost('draw'),
+                    'recordsTotal' => $totalRecords,
+                    'recordsFiltered' => $totalFiltered,
+                    'data' => $data,
+        ]);
     }
 
     /**
@@ -197,7 +270,7 @@ class AvancesActividadesController extends BaseController {
         $infoActividad = $this->actividades->find($infoAvance["idActividad"]);
 
         $nuevosDatosActividad["cantReal"] = $infoActividad["cantReal"] - $infoAvance["horas"];
-        
+
         $nuevosDatosActividad["costoTotalReal"] = $nuevosDatosActividad["cantReal"] * $infoActividad["costoUnitario"];
 
         $nuevosDatosActividad["porcAvanzado"] = $infoActividad["porcAvanzado"] - $infoAvance["porcentaje"];

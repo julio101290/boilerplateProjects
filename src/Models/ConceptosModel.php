@@ -32,8 +32,10 @@ class ConceptosModel extends Model {
     protected $skipValidation = false;
 
     public function mdlGetConceptos(array $idEmpresas, array $params = []) {
-        $builder = $this->db->table('conceptos a')
-                ->select("
+        $builder = $this->db->table('conceptos a');
+
+        if ($this->db->getPlatform() === 'MySQLi') {
+            $builder->select("
             a.id,
             a.idEmpresa,
             a.descripcion,
@@ -44,8 +46,23 @@ class ConceptosModel extends Model {
             a.updated_at,
             a.deleted_at,
             b.nombre AS nombreEmpresa
-        ")
-                ->join('empresas b', 'a.idEmpresa = b.id')
+        ");
+        } else {
+            $builder->select("
+            a.id,
+            a.idEmpresa,
+            a.descripcion,
+            a.\"tipoProyecto\",
+            (SELECT descripcion FROM tipos_proyecto tp WHERE tp.id = a.\"tipoProyecto\") AS \"tipoProyectoNombre\",
+            a.orden,
+            a.created_at,
+            a.updated_at,
+            a.deleted_at,
+            b.nombre AS \"nombreEmpresa\"
+        ");
+        }
+
+        $builder->join('empresas b', 'a.idEmpresa = b.id')
                 ->whereIn('a.idEmpresa', $idEmpresas);
 
         // Total sin filtros

@@ -77,7 +77,6 @@ class ProyectosController extends BaseController {
             ];
             $orderBy = $columns[$orderIndex] ?? 'a.id';
 
-
             $params = [
                 'start' => $start,
                 'length' => $length,
@@ -307,7 +306,13 @@ class ProyectosController extends BaseController {
 
         $datosProyecto = $this->proyectos->where("id", $id)->first();
 
-        $responsable = $this->usuarios->mdlGetUser($datosProyecto["responsable"]);
+        $db = db_connect();
+        
+        $responsable = $db->table('users')
+                ->select('id,email,username,firstname,lastname')
+                ->where('id', $datosProyecto["responsable"])
+                ->get()
+                ->getResultArray();
 
         if (isset($responsable[0])) {
 
