@@ -76,7 +76,8 @@ class ActividadesController extends BaseController {
 
 
         if ($this->request->isAJAX()) {
-
+            
+            $request = service('request');
 
             // Respuesta JSON al estilo DataTables
             return $this->response->setJSON([

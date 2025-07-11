@@ -187,7 +187,7 @@ class ProyectosModel extends Model {
             $builder->select('
             a.descripcion AS "descripcionProyecto",
             c.descripcion AS "descripcionEtapa",
-            SUM(COALESCE(b.costoTotalEstimado, 0)) AS "costoTotalEstimado"
+            SUM(COALESCE(b."costoTotalEstimado", 0)) AS "costoTotalEstimado"
         ');
         }
 
@@ -204,6 +204,9 @@ class ProyectosModel extends Model {
 
     public function mdlPresupuestoProyecto($idProyecto) {
         $builder = $this->db->table('proyectos a');
+        $platform = $this->db->getPlatform();
+        
+        $joinUnidad = $platform === 'Postgre' ? 'CAST(b."unidadMedida" AS INTEGER) = f.id' : 'b.unidadMedida = f.id';
 
         if ($this->db->getPlatform() === 'MySQLi') {
             // MariaDB / MySQL
@@ -225,16 +228,16 @@ class ProyectosModel extends Model {
             d.descripcion as "descripcionConcepto",
             b.descripcion as "descripcionActividad",
             b.cantEstimada,
-            COALESCE(b.costoUnitario, 0.00) as "costoUnitario",
+            COALESCE(b."costoUnitario", 0.00) as "costoUnitario",
             f.descripcion as "descripcionUnidadMedida",
-            COALESCE(b.costoTotalEstimado, 0.00) as "costoTotalEstimado"
+            COALESCE(b."costoTotalEstimado", 0.00) as "costoTotalEstimado"
         ');
         }
 
         $builder->join('actividades b', 'a.id = b.idProyecto');
         $builder->join('etapas c', 'b.etapa = c.id');
         $builder->join('conceptos d', 'b.concepto = d.id');
-        $builder->join('unidades_medida f', 'b.unidadMedida = f.id');
+        $builder->join('unidades_medida f', $joinUnidad);
         $builder->join('empresas e', 'a.idEmpresa = e.id');
         $builder->where('a.id', $idProyecto);
         $builder->orderBy('c.orden', 'asc');

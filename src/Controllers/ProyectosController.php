@@ -128,7 +128,7 @@ class ProyectosController extends BaseController {
          */
         $titulos["title"] = "Cubo";
         $titulos["subtitle"] = "Tabla dinamica";
-        return view('cubo', $titulos);
+        return view('julio101290\boilerplateprojects\Views\cubo', $titulos);
     }
 
     /**
