@@ -15,7 +15,7 @@ use julio101290\boilerplateprojects\Models\ConceptosModel;
 use julio101290\boilerplateunidadesmedidas\Models\{
     Unidades_medidaModel
 };
-use App\Models\UserModel;
+use julio101290\boilerplate\Models\UserModel;
 use julio101290\boilerplateproducts\Models\ProductsModel;
 use App\Controllers\LicenciasController;
 
