@@ -721,15 +721,7 @@
         var idUsuarioFiltro = $("#idUsuarioFiltro").val();
 
 
-        if ($(this).is(':checked')) {
-
-            var todas = true;
-
-        } else {
-
-            var todas = false;
-
-        }
+        var todas = $(this).is(':checked') ? 1 : 0
 
         tableActividades.ajax.url(`<?= base_url('admin/actividades') ?>/` + desdeFecha + '/' + hastaFecha + '/' + todas + '/' + idEmpresa + '/' + idProyectoFiltro + '/' + idUsuarioFiltro).load();
 
