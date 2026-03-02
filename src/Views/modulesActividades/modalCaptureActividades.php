@@ -362,7 +362,7 @@
 
     $("#idProyecto").select2({
         ajax: {
-            url: "<?= site_url('admin/proyecto/getProyectosAjax') ?>",
+            url: "<?= site_url('admin/proyecto/getProyectosAjaxStatus') ?>",
             type: "post",
             dataType: 'json',
             delay: 250,
@@ -371,9 +371,11 @@
                 var csrfName = $('.txt_csrfname').attr('name'); // CSRF Token name
                 var csrfHash = $('.txt_csrfname').val(); // CSRF hash
                 var idEmpresa = $('.idEmpresa').val(); // CSRF hash
+                var status = "0"; // CSRF hash
 
                 return {
                     searchTerm: params.term, // search term
+                    status: status, // search term
                     [csrfName]: csrfHash, // CSRF Token
                     idEmpresa: idEmpresa // search term
                 };

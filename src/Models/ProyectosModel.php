@@ -11,7 +11,7 @@ class ProyectosModel extends Model {
     protected $useAutoIncrement = true;
     protected $returnType = 'array';
     protected $useSoftDeletes = true;
-    protected $allowedFields = ['id', 'idEmpresa', 'idSucursal', 'tipoProyecto', 'descripcion', 'fechaInicio', 'fechaFinal', 'idCliente', 'responsable', 'created_at', 'updated_at', 'deleted_at'];
+    protected $allowedFields = ['id', 'idEmpresa', 'idSucursal', 'tipoProyecto', 'descripcion', 'fechaInicio','status', 'fechaFinal', 'idCliente', 'responsable', 'created_at', 'updated_at', 'deleted_at'];
     protected $useTimestamps = true;
     protected $createdField = 'created_at';
     protected $deletedField = 'deleted_at';
@@ -48,6 +48,7 @@ class ProyectosModel extends Model {
             a.fechaInicio,
             a.fechaFinal,
             a.idCliente,
+            a.status,
             CONCAT(f.firstname, ' ', f.lastname) AS responsable,
             a.created_at,
             a.updated_at,
@@ -63,6 +64,7 @@ class ProyectosModel extends Model {
             a.idEmpresa,
             a.idSucursal,
             a.tipoProyecto,
+            a.status,
             a.descripcion,
             a.fechaInicio,
             a.fechaFinal,
@@ -133,6 +135,7 @@ class ProyectosModel extends Model {
             a.created_at,
             a.updated_at,
             a.deleted_at,
+            a.status,
             b.nombre AS nombreEmpresa,
             c.name AS nombreSucursal,
             d.descripcion AS nombreTipoDescripcion,
@@ -150,6 +153,7 @@ class ProyectosModel extends Model {
             a.fechaFinal,
             a.idCliente,
             a.responsable,
+            a.status,
             a.created_at,
             a.updated_at,
             a.deleted_at,

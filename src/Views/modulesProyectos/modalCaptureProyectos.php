@@ -68,7 +68,27 @@
                             </div>
                         </div>
                     </div>
+                    
+                    
+                    <div class="form-group row">
+                        <label for="tipoProyecto" class="col-sm-2 col-form-label"><?= lang('proyectos.fields.status') ?></label>
+                        <div class="col-sm-10">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text"><i class="fas fa-pencil-alt"></i></span>
+                                </div>
 
+                                <select class="form-control status" name="status" id="status" style = "width:80%;">
+                                    <option value="0"><?= lang('proyectos.fields.statusOpen') ?></option>
+                                    <option value="1"><?= lang('proyectos.fields.statusCancel') ?></option>
+                                    <option value="2"><?= lang('proyectos.fields.statusPaused') ?></option>
+                                    <option value="3"><?= lang('proyectos.fields.statusFinished') ?></option>
+
+                                </select>
+
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="form-group row">
                         <label for="responsable" class="col-sm-2 col-form-label"><?= lang('proyectos.fields.descripcion') ?></label>

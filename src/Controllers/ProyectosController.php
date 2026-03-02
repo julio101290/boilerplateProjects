@@ -12,7 +12,7 @@ use julio101290\boilerplatecompanies\Models\EmpresasModel;
 use julio101290\boilerplatebranchoffice\Models\BranchofficesModel;
 use julio101290\boilerplatecustumers\Models\CustumersModel;
 use julio101290\boilerplateprojects\Models\Tipos_proyectoModel;
-use App\Models\UserModel;
+use julio101290\boilerplate\Models\UserModel;
 
 class ProyectosController extends BaseController {
 
@@ -278,6 +278,67 @@ class ProyectosController extends BaseController {
             $listProyectos = $proyectos->select('id,descripcion')
                     ->where("deleted_at", null)
                     ->where("idEmpresa", $postData["idEmpresa"])
+                    ->groupStart()
+                    ->orLike('id', $searchTerm)
+                    ->orLike('descripcion', $searchTerm)
+                    ->groupEnd()
+                    ->findAll();
+        }
+
+        $data = array();
+
+        foreach ($listProyectos as $proyecto) {
+            $data[] = array(
+                "id" => $proyecto['id'],
+                "text" => $proyecto['id'] . ' ' . $proyecto['descripcion'],
+            );
+        }
+
+        $response['data'] = $data;
+
+        return $this->response->setJSON($response);
+    }
+    
+    
+        /**
+     * Lista de tipos de Proyectos via AJax
+     */
+    public function getProyectosAjaxStatus() {
+
+        $request = service('request');
+        $postData = $request->getPost();
+        
+        $status = $postData["status"];
+
+        $response = array();
+
+        // Read new token and assign in $response['token']
+        $response['token'] = csrf_hash();
+
+        helper('auth');
+        $userName = user()->username;
+        $idUser = user()->id;
+        $idEmpresa = $postData['idEmpresa'];
+        $proyectos = new ProyectosModel();
+
+        if (!isset($postData['searchTerm'])) {
+            // Fetch record
+
+            $listProyectos = $proyectos->select('id,descripcion')
+                    ->where("deleted_at", null)
+                    ->where("idEmpresa", $idEmpresa)
+                    ->where("status", $status)
+                    ->orderBy('id')
+                    ->orderBy('idEmpresa')
+                    ->orderBy('descripcion')
+                    ->findAll();
+        } else {
+            $searchTerm = $postData['searchTerm'];
+
+            $listProyectos = $proyectos->select('id,descripcion')
+                    ->where("deleted_at", null)
+                    ->where("idEmpresa", $postData["idEmpresa"])
+                    ->where("status", $status)
                     ->groupStart()
                     ->orLike('id', $searchTerm)
                     ->orLike('descripcion', $searchTerm)

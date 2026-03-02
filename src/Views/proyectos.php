@@ -164,6 +164,7 @@
         var fechaFinal = $("#fechaFinal").val();
         var idCliente = $("#idCliente").val();
         var responsable = $("#responsable").val();
+        var status = $("#status").val();
 
         $("#btnSaveProyectos").attr("disabled", true);
 
@@ -177,6 +178,7 @@
         datos.append("fechaFinal", fechaFinal);
         datos.append("idCliente", idCliente);
         datos.append("responsable", responsable);
+        datos.append("status", status);
 
 
         $.ajax({
@@ -351,6 +353,8 @@
                 $("#fechaInicio").val(respuesta["fechaInicio"]);
                 $("#fechaFinal").val(respuesta["fechaFinal"]);
                 $("#idCliente").val(respuesta["idCliente"]);
+                
+                $("#status").val(respuesta["status"]);
 
             }
 
