@@ -189,41 +189,49 @@ class AvancesActividadesController extends BaseController {
     }
 
     public function ctrGetAvances($id) {
-
         helper('auth');
-        $userName = user()->username;
-        $idUser = user()->id;
-        $datos = $this->request->getPost();
-
-        $auth = service('authentication');
-        if (!$auth->check()) {
-
-            echo "No ha iniciado Session";
-            return;
+        if (!service('authentication')->check()) {
+            return $this->response->setJSON(['error' => 'No ha iniciado sesión']);
         }
 
 
 
 
+
         $request = service('request');
+        $fields = ['id', 'idActividad', 'fecha', 'descripcion', 'porcentaje', 'horas', 'created_at', 'updated_at', 'deleted_at'];
+
+        // --- Asegurar que $id es numérico ---
+        $id = (int) $id;
+        if ($id <= 0) {
+            return $this->response->setJSON([
+                        'draw' => (int) $request->getPost('draw'),
+                        'recordsTotal' => 0,
+                        'recordsFiltered' => 0,
+                        'data' => [],
+            ]);
+        }
+
+        // --- Total de registros sin filtro de búsqueda ---
+        $totalRecords = $this->avancesActividades
+                ->where('deleted_at', null)
+                ->where('idActividad', $id)
+                ->countAllResults();  // resetea el builder
+        // --- Construir la consulta para datos paginados ---
         $builder = $this->avancesActividades
-                ->select('id, idActividad, fecha, descripcion, porcentaje, horas, created_at, updated_at, deleted_at')
+                ->select($fields)
                 ->where('deleted_at', null)
                 ->where('idActividad', $id);
 
-        // Parámetros de DataTables
+        // Parámetros DataTables
         $search = $request->getPost('search')['value'] ?? '';
-        $start = (int) $request->getPost('start') ?? 0;
-        $length = (int) $request->getPost('length') ?? 10;
+        $start = (int) ($request->getPost('start') ?? 0);
+        $length = (int) ($request->getPost('length') ?? 10);
         $orderCol = $request->getPost('order')[0]['column'] ?? 0;
         $orderDir = $request->getPost('order')[0]['dir'] ?? 'asc';
-        $columns = $request->getPost('columns');
-
-        // Columnas disponibles
-        $fields = ['id', 'idActividad', 'fecha', 'descripcion', 'porcentaje', 'horas', 'created_at', 'updated_at', 'deleted_at'];
         $orderBy = $fields[$orderCol] ?? 'id';
 
-        // Filtro de búsqueda
+        // Aplicar búsqueda
         if (!empty($search)) {
             $builder->groupStart();
             foreach ($fields as $field) {
@@ -232,24 +240,26 @@ class AvancesActividadesController extends BaseController {
             $builder->groupEnd();
         }
 
-        // Total sin filtro
-        $totalRecords = $this->avancesActividades
+        // --- Total de registros filtrados (usando un builder nuevo) ---
+        $filteredBuilder = $this->avancesActividades
                 ->where('deleted_at', null)
-                ->where('idActividad', $id)
-                ->countAllResults(false); // false: para no reiniciar el builder
-        // Total con filtro
-        $filteredBuilder = clone $builder;
+                ->where('idActividad', $id);
+        if (!empty($search)) {
+            $filteredBuilder->groupStart();
+            foreach ($fields as $field) {
+                $filteredBuilder->orLike($field, $search);
+            }
+            $filteredBuilder->groupEnd();
+        }
         $totalFiltered = $filteredBuilder->countAllResults();
 
-        // Aplicar orden y paginación
-        $builder->orderBy($orderBy, $orderDir)
-                ->limit($length, $start);
+        // --- Obtener datos paginados ---
+        $data = $builder->where('idActividad', $id)
+                ->orderBy($orderBy, $orderDir)
+                ->limit($length, $start)
+                ->get()
+                ->getResult();
 
-        // Obtener resultados
-        $query = $builder->get();
-        $data = $query->getResult();
-
-        // Formato JSON para DataTables
         return $this->response->setJSON([
                     'draw' => (int) $request->getPost('draw'),
                     'recordsTotal' => $totalRecords,
